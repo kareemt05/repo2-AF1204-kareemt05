@@ -278,36 +278,64 @@ def _(count, filtered_portfolio, go, mo, pd, px):
     fig_attendance.update_layout(coloraxis_showscale=False)
     chart_attendance = mo.ui.plotly(fig_attendance)
 
-    # ── Web Scraping: Audit / Big 4 jobs ───────────────────────────────────────
-    audit_data = pd.DataFrame({
-        "Role_Type": [
-            "Audit Graduate", "Tax Graduate", "Advisory Graduate",
-            "Audit Internship", "Technology Audit", "Forensic Accounting",
+    # ── Web Scraping: Luxury Hotel Price chart ─────────────────────────────────
+    hotel_data = pd.DataFrame({
+        "Hotel": [
+            "Ritz-Carlton Doha", "Burj Al Arab Dubai", "The Savoy London",
+            "Hotel de Crillon Paris", "Mandarin Oriental Barcelona",
+            "Four Seasons Istanbul",
         ],
-        "Listings": [41, 28, 22, 19, 14, 9],
-        "Avg_Salary_K": [33, 32, 34, 19, 35, 36],
-        "Firm_Tier": [
-            "Big 4", "Big 4", "Big 4",
-            "Big 4", "Big 4", "Big 4",
-        ],
+        "Avg_Nightly_Rate_GBP": [620, 980, 710, 850, 490, 420],
+        "Occupancy_Pct": [88, 76, 91, 82, 85, 79],
+        "Star_Rating": [5, 5, 5, 5, 5, 5],
+        "Region": ["Middle East", "Middle East", "Europe", "Europe", "Europe", "Middle East"],
     })
-    fig_audit = px.bar(
-        audit_data,
-        x="Role_Type",
-        y="Listings",
-        color="Avg_Salary_K",
-        color_continuous_scale=["steelblue", "seagreen"],
-        title="Simulated Output — Big 4 Audit & Accounting Graduate Roles by Type",
+    region_colors_hotel = {
+        "Middle East": "goldenrod",
+        "Europe": "steelblue",
+    }
+    fig_hotel_scatter = px.scatter(
+        hotel_data,
+        x="Avg_Nightly_Rate_GBP",
+        y="Occupancy_Pct",
+        color="Region",
+        size="Avg_Nightly_Rate_GBP",
+        text="Hotel",
+        color_discrete_map=region_colors_hotel,
+        title="Simulated Scraped Output — Five-Star Hotel Rates vs Occupancy",
         labels={
-            "Role_Type": "Role Type",
-            "Listings": "Listings Collected",
-            "Avg_Salary_K": "Avg. Salary (£k)",
+            "Avg_Nightly_Rate_GBP": "Avg. Nightly Rate (£)",
+            "Occupancy_Pct": "Occupancy Rate (%)",
         },
         template="plotly_white",
-        height=420,
+        height=480,
     )
-    fig_audit.update_layout(xaxis_tickangle=-15)
-    chart_audit = mo.ui.plotly(fig_audit)
+    fig_hotel_scatter.update_traces(textposition="top center")
+    chart_hotel_scatter = mo.ui.plotly(fig_hotel_scatter)
+
+    hotel_bar_data = pd.DataFrame({
+        "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+        "Ritz_Carlton_Rate": [580, 540, 610, 650, 630, 700,
+                              780, 820, 680, 640, 600, 750],
+        "Savoy_Rate": [640, 590, 670, 720, 700, 760,
+                       840, 880, 730, 690, 650, 810],
+    })
+    fig_hotel_bar = px.line(
+        hotel_bar_data,
+        x="Month",
+        y=["Ritz_Carlton_Rate", "Savoy_Rate"],
+        title="Simulated Scraped Rate Comparison — Ritz-Carlton Doha vs The Savoy London (£/night)",
+        labels={"value": "Nightly Rate (£)", "Month": "Month", "variable": "Hotel"},
+        template="plotly_white",
+        height=400,
+        markers=True,
+        color_discrete_map={
+            "Ritz_Carlton_Rate": "goldenrod",
+            "Savoy_Rate": "steelblue",
+        },
+    )
+    chart_hotel_bar = mo.ui.plotly(fig_hotel_bar)
 
     # ── Travel map ─────────────────────────────────────────────────────────────
     travel_data = pd.DataFrame({
@@ -341,7 +369,7 @@ def _(count, filtered_portfolio, go, mo, pd, px):
         chart_scatter, chart_box, chart_3d,
         chart_occupancy, chart_satisfaction,
         chart_player, chart_attendance,
-        chart_audit, chart_travel,
+        chart_hotel_scatter, chart_hotel_bar, chart_travel,
     )
 
 
@@ -355,7 +383,8 @@ def _(
     chart_satisfaction,
     chart_player,
     chart_attendance,
-    chart_audit,
+    chart_hotel_scatter,
+    chart_hotel_bar,
     chart_travel,
     mo,
     sector_dropdown,
@@ -591,77 +620,95 @@ low (red) to high (green). Key observations:
     # ── Tab 5: Web Scraping Pipeline ────────────────────────────────────────────
     tab_scraping = mo.vstack([
         mo.md("""
-## Web Scraping & Automation Pipeline
+## Luxury Hotel Price Scraping Pipeline
 ### Skills: Week 7 — Playwright · PDF Extraction · Bot Evasion
 
 *Overview*
 
-Breaking into audit at a Big 4 firm requires tracking graduate recruitment cycles closely.
-Firms like Deloitte, PwC, KPMG, and EY publish graduate scheme listings across multiple
-pages of their websites, updating them frequently throughout the year. In Week 7 I built
-an automated three-stage pipeline using *Playwright* to collect this data programmatically,
-applying it to Big 4 and professional services career pages.
+Luxury hotel room rates change dynamically based on occupancy, seasonality, and demand.
+Booking platforms like Booking.com, Expedia, and hotel direct websites update pricing
+multiple times daily — making manual rate tracking impossible at scale. During my time
+at the Ritz-Carlton Doha I observed how pricing strategy directly affects revenue and
+occupancy targets. In Week 7 I built an automated three-stage pipeline using *Playwright*
+to collect this pricing data programmatically across multiple five-star properties.
+
+In an audit context, being able to verify a hotel client's reported revenue against
+independently scraped market rate data is a powerful analytical procedure — directly
+linking this pipeline to my career goal in audit.
 
 ---
 
 *Stage 1 — Bot Evasion & Cookie Handling*
 
-Recruitment pages on large firm websites often block automated scripts.
+Booking platforms heavily protect their pricing data against automated scraping.
 The script launches a Chromium browser with a realistic user-agent string, suppresses
 automation flags, and handles cookie consent banners before saving session data for reuse.
 
 Key techniques:
 - Launch Playwright Chromium with a custom user-agent string
-- Suppress automation flags (confirmed via screenshot comparison)
+- Suppress automation flags (confirmed via before/after screenshot comparison)
 - Programmatically click "Accept All" on cookie consent banners
 - Save cookies and local storage to cookies.json and localStorage.json
 
 ---
 
-*Stage 2 — Web Crawling to Collect Role URLs*
+*Stage 2 — Web Crawling to Collect Rate Pages*
 
-Starting from each firm's careers landing page, the crawler follows links recursively,
-collecting URLs matching keywords such as "graduate", "audit", "assurance",
-"early careers", and "training contract". PDF brochure links are filtered separately.
+Starting from a hotel's booking page, the crawler follows links recursively, collecting
+URLs containing room availability and pricing data matching target keywords such as
+"room-rate", "availability", "superior-room", and "suite".
 
 Key techniques:
 - Recursive web crawling with configurable depth and maximum run time
-- Keyword filtering to screen relevant role listing URLs
+- Keyword filtering to screen relevant pricing pages
 - Deduplication using a visited URL ledger
-- Separate extraction of PDF graduate brochure links
+- Separate extraction of PDF rate sheet links
 
 ---
 
-*Stage 3 — PDF Download & Role Data Extraction*
+*Stage 3 — Rate Extraction & Structured Output*
 
-For each PDF graduate brochure, the script downloads the file and extracts pages
-containing keywords such as "ACA", "salary", "application deadline", and "eligibility".
+For each pricing page, the script extracts room type, nightly rate, and availability
+status, saving results to a structured CSV for analysis. For PDF rate sheets, PyMuPDF
+extracts the pricing tables with an OCR fallback for scanned documents.
 
 Key techniques:
-- Programmatic PDF download with a ledger to avoid duplicates
-- Text extraction using PyMuPDF for searchable PDFs
-- OCR fallback for scanned documents
-- Page-by-page keyword counting and extraction
+- Programmatic data extraction from dynamic booking pages
+- Text extraction using PyMuPDF for PDF rate sheets
+- OCR fallback for scanned rate documents
+- Structured CSV output for downstream analysis
 
 ---
 
-*Simulated Output — Big 4 Graduate Roles Collected by Type*
+*Simulated Output — Five-Star Hotel Rates vs Occupancy*
 
-The chart below shows the distribution of role types that would be collected across
-the Big 4 firms, with colour indicating average salary. Audit Graduate roles dominate
-by volume, reflecting the scale of Big 4 audit practices.
+The scatter plot shows simulated scraped nightly rates plotted against occupancy for
+six five-star properties, with Middle East and European hotels colour-coded separately.
         """),
-        chart_audit,
+        chart_hotel_scatter,
         mo.md("""
 ---
 
+*Rate Comparison — Ritz-Carlton Doha vs The Savoy London*
+
+The line chart compares simulated monthly nightly rates across two iconic five-star
+properties. Key observations:
+- Both hotels follow a similar seasonal pattern — rates peak in summer and over the
+  festive period and dip in late winter
+- The Savoy consistently commands a premium over the Ritz-Carlton across all months,
+  reflecting London's position as a premium luxury destination
+- This kind of rate benchmarking data would be directly useful to a hotel auditor
+  verifying whether a client's reported revenue per available room is consistent
+  with prevailing market rates
+
 *Why this matters for audit*
 
-Big 4 firms publish graduate recruitment information across hundreds of web pages and
-PDF brochures. This pipeline automates the collection and extraction of that information,
-giving any aspiring auditor a data-driven view of the recruitment landscape — deadlines,
-salary benchmarks, eligibility criteria, and which offices are hiring.
+Revenue recognition is one of the highest-risk audit areas for hospitality clients.
+Independently scraped market rate data provides an analytical benchmark against which
+auditors can assess the reasonableness of a client's reported room revenue — a technique
+known as substantive analytical procedures.
         """),
+        chart_hotel_bar,
     ])
 
     # ── Tab 6: Personal Interests ───────────────────────────────────────────────
